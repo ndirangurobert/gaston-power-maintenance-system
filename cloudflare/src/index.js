@@ -46,7 +46,18 @@ function validEmail(value) {
   return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 190;
 }
 async function readBody(request) {
-  try { return await request.json(); } catch { return {}; }
+  const declared = Number(request.headers.get("content-length") || 0);
+  if (declared > 32768) throw new Error("Request is too large.");
+  const raw = await request.text();
+  if (raw.length > 32768) throw new Error("Request is too large.");
+  try {
+    const value = JSON.parse(raw || "{}");
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid request body.");
+    return value;
+  } catch (e) {
+    if (e.message === "Request is too large." || e.message === "Invalid request body.") throw e;
+    throw new Error("Invalid JSON request.");
+  }
 }
 async function currentUser(request, env) {
   const sid = cookieValue(request, "gp_session");
@@ -326,9 +337,18 @@ export default {
   };
   try {
    const url=new URL(request.url);
+   if (request.method !== "GET" && request.method !== "HEAD") {
+    const origin = request.headers.get("Origin");
+    const fetchSite = request.headers.get("Sec-Fetch-Site");
+    if ((origin && origin !== url.origin) || fetchSite === "cross-site") {
+     return json({error:"Cross-origin request blocked."},403,headers);
+    }
+   }
    if(url.pathname.startsWith("/api/")) {
     if(!env.DB) return json({error:"D1 database binding is missing. Configure the DB binding in Cloudflare."},500,headers);
-    const response=await api(request,env);
+    let response;
+    try { response=await api(request,env); }
+    catch (e) { return json({error:e?.message === "Request is too large." || e?.message === "Invalid JSON request." || e?.message === "Invalid request body." ? e.message : "The request could not be completed."},400,headers); }
     const h=new Headers(response.headers); for(const [k,v] of Object.entries(headers))h.set(k,v);
     return new Response(response.body,{status:response.status,headers:h});
    }
