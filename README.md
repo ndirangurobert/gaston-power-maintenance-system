@@ -2,41 +2,40 @@
 
 A PHP 8+ and MySQL application for tracking generators, customers, maintenance jobs, service history and staff activity.
 
-## Current foundation
-- Secure PHP sessions and password-hashed accounts
-- Role-based access (admin, technician, viewer)
-- Prepared SQL statements and server-side validation
-- CSRF protection on state-changing forms
-- Login throttling and audit logging
-- Dashboard foundation and generator records schema
+## Features currently included
+- Secure login, password hashing and authenticated password change
+- Admin, technician and viewer roles
+- Generator asset register and customer records
+- Maintenance work orders, technician assignment and service notes
+- Spare-parts register with low-stock indicators
+- Dashboard statistics and audit logging
+- Prepared SQL statements, CSRF protection, output escaping and login throttling
 
-## Requirements
+## Hosting requirements
 - PHP 8.1+ with PDO MySQL
 - MySQL 8+ or MariaDB 10.4+
-- Apache/Nginx (or UwAmp/XAMPP for local development)
+- Apache-compatible hosting with .htaccess support
 
-## Local installation
-1. Create a MySQL database in your hosting control panel (the provider may assign a prefixed database name).
-2. Open that database in phpMyAdmin and import `database/schema.sql`.
-3. Copy `config/database.example.php` to `config/database.php` and set your database host, name, username and password. Never commit real credentials.
-4. Set a long random `APP_KEY` in `config/database.php`.
-5. Point your web server document root to this project folder. For production, ideally point it to `public/`.
-6. Open `setup.php` locally to create the first administrator, then delete `setup.php` immediately.
-7. Sign in at `login.php`.
+## Deploying to shared PHP/MySQL hosting
+1. Create a MySQL database using the hosting control panel. Copy its exact database name, hostname, username and password.
+2. Open phpMyAdmin for that database and import `database/schema.sql`. The SQL file imports into the database you selected; it does not try to create a database.
+3. Copy `config/database.example.php` to `config/database.php` and set the exact database credentials supplied by your host.
+4. Set a unique random `APP_KEY` of at least 32 characters. Do not commit real credentials to GitHub.
+5. Upload the project files and folders into the website document root (often `htdocs` or `public_html`). Preserve folder structure.
+6. Visit your domain to reach the sign-in page, then open `setup.php` once to create the first administrator.
+7. Immediately delete `setup.php` from the hosting file manager after the administrator has been created.
+8. Sign in. Create separate accounts for staff and grant only the access they need.
 
-## Important security notes
-- Use HTTPS in production.
-- Keep PHP, MySQL and the server patched.
-- Do not upload database credentials or real customer information to GitHub.
-- Restrict database permissions to the application database only.
-- Back up the database regularly and test restoration.
-- Configure production secrets as environment variables or in a file outside the public web root.
-- This starter is a foundation; perform security testing and review before using it with real company data.
+## InfinityFree note
+InfinityFree database names, usernames and hosts are generated in the control panel. Do not assume the database is named `gaston_power` or that the host is `localhost`. Use the exact values shown in the hosting panel. Import the SQL into the database you created.
 
-## Default roles
-- **Admin:** manages users and all records.
-- **Technician:** views assigned work and updates maintenance records (module to be added).
-- **Viewer:** read-only access (module to be added).
+## Security before real business use
+- Enable HTTPS and force secure cookies.
+- Do not upload real customer information until the site has been reviewed and tested.
+- Use unique administrator passwords and grant each staff member only the access they need.
+- Keep a backup outside the web hosting account and test restoring it.
+- Never commit `config/database.php`, passwords, database exports or customer records.
+- This is a development foundation, not a certified production system. Complete staff management, operational testing and an independent security review before using it for company-critical records.
 
 ## Project status
-Phase 1: application foundation, authentication and database schema. Customer records, generator register, maintenance work orders, technician assignment, spare-parts register and password change are now included. Staff administration, stock movement controls, reports and full production hardening remain planned.
+Customer records, generator register, maintenance work orders, technician assignment, spare-parts register and password change are included. Staff account management, stock movement controls, reports and further production hardening remain planned.
