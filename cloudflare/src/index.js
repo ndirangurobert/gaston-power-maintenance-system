@@ -247,6 +247,14 @@ async function api(request, env) {
     }
     if (method==="DELETE" && id) {
       if (!requireRole(user,"admin")) return error("Only an administrator can delete records.",403);
+      if (key === "generators") {
+        const linked = await env.DB.prepare(
+          "SELECT COUNT(*) AS total FROM maintenance_jobs WHERE generator_id=?"
+        ).bind(Number(id)).first();
+        if (linked.total > 0) {
+          return error("This generator has maintenance history and cannot be deleted. Mark it inactive instead.", 409);
+        }
+      }
       await env.DB.prepare("DELETE FROM "+cfg.table+" WHERE id=?").bind(Number(id)).run();
       await audit(env,user.id,key+"_deleted","Record "+id);
       return json({message:"Record deleted."});
