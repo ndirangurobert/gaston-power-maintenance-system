@@ -39,4 +39,4 @@ A PHP 8+ and MySQL application for tracking generators, customers, maintenance j
 - **Viewer:** read-only access (module to be added).
 
 ## Project status
-Phase 1: application foundation, authentication and database schema. Generator/customer/maintenance workflows will be added in subsequent phases.
+Phase 1: application foundation, authentication and database schema. Customer records, generator register, maintenance work orders, technician assignment, spare-parts register and password change are now included. Staff administration, stock movement controls, reports and full production hardening remain planned.
