@@ -8,7 +8,7 @@
     {
       "binding": "DB",
       "database_name": "gaston-power-db",
-      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "database_id": "46dc7e28-d2ec-4c6d-b4cd-69a76a56d55f",
       "migrations_dir": "migrations"
     }
   ]
