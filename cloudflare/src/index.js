@@ -306,6 +306,7 @@ export default {
    if(request.method!=="GET" && request.method!=="HEAD") return new Response("Method not allowed",{status:405,headers});
    return new Response(page(),{headers:{"content-type":"text/html; charset=utf-8","cache-control":"no-store",...headers}});
   } catch (e) {
+   console.error("Gaston Power Worker request failed:", e?.stack || e?.message || String(e));
    return json({error:"The request could not be completed."},500,headers);
   }
  }
