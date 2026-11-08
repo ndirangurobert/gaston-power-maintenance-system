@@ -31,7 +31,7 @@ function fromBase64(s) {
 async function passwordHash(password, saltText) {
   const salt = saltText ? fromBase64(saltText) : crypto.getRandomValues(new Uint8Array(16));
   const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: 210000 }, key, 256);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: 100000 }, key, 256);
   return { salt: base64(salt), hash: base64(bits) };
 }
 async function passwordMatches(password, salt, expected) {
