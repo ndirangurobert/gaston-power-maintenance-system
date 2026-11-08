@@ -46,7 +46,18 @@ function validEmail(value) {
   return typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 190;
 }
 async function readBody(request) {
-  try { return await request.json(); } catch { return {}; }
+  const declared = Number(request.headers.get("content-length") || 0);
+  if (declared > 32768) throw new Error("Request is too large.");
+  const raw = await request.text();
+  if (raw.length > 32768) throw new Error("Request is too large.");
+  try {
+    const value = JSON.parse(raw || "{}");
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid request body.");
+    return value;
+  } catch (e) {
+    if (e.message === "Request is too large." || e.message === "Invalid request body.") throw e;
+    throw new Error("Invalid JSON request.");
+  }
 }
 async function currentUser(request, env) {
   const sid = cookieValue(request, "gp_session");
@@ -92,20 +103,36 @@ const collections = {
     required: ["name"], search: "name"
   }
 };
-function cleanRecord(config, input) {
+async function cleanRecord(env, config, input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Invalid record data.");
   const out = {};
+  const numeric = ["customer_id","technician_id","generator_id","capacity_kva","quantity","reorder_level","unit_cost","cost"];
   for (const field of config.fields) {
     if (!(field in input)) continue;
     const value = input[field];
-    if (["customer_id","technician_id","generator_id","capacity_kva","quantity","reorder_level","unit_cost","cost"].includes(field)) {
-      out[field] = value === "" || value === null ? null : Number(value);
-      if (out[field] !== null && !Number.isFinite(out[field])) throw new Error("Invalid number in " + field);
+    if (numeric.includes(field)) {
+      if (value === "" || value === null) { out[field] = null; continue; }
+      const n = Number(value);
+      if (!Number.isFinite(n)) throw new Error("Enter a valid number for " + field + ".");
+      if (["customer_id","technician_id","generator_id"].includes(field) && (!Number.isInteger(n) || n < 1)) throw new Error(field + " must be a positive whole number.");
+      if (["quantity","reorder_level"].includes(field) && (!Number.isInteger(n) || n < 0)) throw new Error(field + " must be a non-negative whole number.");
+      if (["capacity_kva","unit_cost","cost"].includes(field) && n < 0) throw new Error(field + " cannot be negative.");
+      out[field] = n;
     } else {
-      out[field] = safeText(value, field === "notes" || field === "findings" || field === "work_done" ? 3000 : 500);
+      if (value !== null && typeof value !== "string") throw new Error("Invalid value for " + field + ".");
+      out[field] = safeText(value, ["notes","findings","work_done"].includes(field) ? 3000 : 500);
     }
   }
-  for (const field of config.required) if (!out[field]) throw new Error(field + " is required");
-  if (out.email && !validEmail(out.email)) throw new Error("Enter a valid email address");
+  for (const field of config.required) if (out[field] === undefined || out[field] === null || out[field] === "") throw new Error(field + " is required.");
+  if (out.email && !validEmail(out.email)) throw new Error("Enter a valid email address.");
+  if (out.status) {
+    const allowed = config.table === "generators" ? ["active","maintenance","inactive"] : config.table === "maintenance_jobs" ? ["scheduled","in_progress","completed","cancelled"] : null;
+    if (allowed && !allowed.includes(out.status)) throw new Error("Select a valid status.");
+  }
+  for (const field of ["scheduled_date","completed_date"]) if (out[field] && !/^\\d{4}-\\d{2}-\\d{2}$/.test(out[field])) throw new Error("Enter a valid " + field.replace("_"," ") + ".");
+  if (out.customer_id != null) { const row = await env.DB.prepare("SELECT id FROM customers WHERE id=?").bind(out.customer_id).first(); if (!row) throw new Error("The selected customer does not exist."); }
+  if (out.generator_id != null) { const row = await env.DB.prepare("SELECT id FROM generators WHERE id=?").bind(out.generator_id).first(); if (!row) throw new Error("The selected generator does not exist."); }
+  if (out.technician_id != null) { const row = await env.DB.prepare("SELECT id FROM users WHERE id=? AND role='technician' AND active=1").bind(out.technician_id).first(); if (!row) throw new Error("Choose an active technician account."); }
   return out;
 }
 async function api(request, env) {
@@ -226,7 +253,7 @@ async function api(request, env) {
     if (!requireRole(user,cfg.minRole)) return error("You do not have permission to make changes.",403);
     if (method==="POST" && !id) {
       const b=await readBody(request);
-      let data; try { data=cleanRecord(cfg,b); } catch(e) { return error(e.message); }
+      let data; try { data=await cleanRecord(env,cfg,b); } catch(e) { return error(e.message); }
       const fields=Object.keys(data), sql="INSERT INTO "+cfg.table+" ("+fields.join(",")+") VALUES ("+fields.map(()=>"?").join(",")+")";
       try {
         const result=await env.DB.prepare(sql).bind(...fields.map(f=>data[f])).run();
@@ -236,7 +263,7 @@ async function api(request, env) {
     }
     if (method==="PUT" && id) {
       const b=await readBody(request);
-      let data; try { data=cleanRecord(cfg,b); } catch(e) { return error(e.message); }
+      let data; try { data=await cleanRecord(env,cfg,b); } catch(e) { return error(e.message); }
       const fields=Object.keys(data);
       if (!fields.length) return error("No changes supplied.");
       try {
@@ -247,6 +274,14 @@ async function api(request, env) {
     }
     if (method==="DELETE" && id) {
       if (!requireRole(user,"admin")) return error("Only an administrator can delete records.",403);
+      if (key === "generators") {
+        const linked = await env.DB.prepare(
+          "SELECT COUNT(*) AS total FROM maintenance_jobs WHERE generator_id=?"
+        ).bind(Number(id)).first();
+        if (linked.total > 0) {
+          return error("This generator has maintenance history and cannot be deleted. Mark it inactive instead.", 409);
+        }
+      }
       await env.DB.prepare("DELETE FROM "+cfg.table+" WHERE id=?").bind(Number(id)).run();
       await audit(env,user.id,key+"_deleted","Record "+id);
       return json({message:"Record deleted."});
@@ -302,9 +337,18 @@ export default {
   };
   try {
    const url=new URL(request.url);
+   if (request.method !== "GET" && request.method !== "HEAD") {
+    const origin = request.headers.get("Origin");
+    const fetchSite = request.headers.get("Sec-Fetch-Site");
+    if ((origin && origin !== url.origin) || fetchSite === "cross-site") {
+     return json({error:"Cross-origin request blocked."},403,headers);
+    }
+   }
    if(url.pathname.startsWith("/api/")) {
     if(!env.DB) return json({error:"D1 database binding is missing. Configure the DB binding in Cloudflare."},500,headers);
-    const response=await api(request,env);
+    let response;
+    try { response=await api(request,env); }
+    catch (e) { return json({error:e?.message === "Request is too large." || e?.message === "Invalid JSON request." || e?.message === "Invalid request body." ? e.message : "The request could not be completed."},400,headers); }
     const h=new Headers(response.headers); for(const [k,v] of Object.entries(headers))h.set(k,v);
     return new Response(response.body,{status:response.status,headers:h});
    }
