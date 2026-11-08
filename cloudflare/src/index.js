@@ -119,16 +119,21 @@ async function api(request, env) {
     return json({ setupRequired: row.total === 0 });
   }
   if (path === "setup" && method === "POST") {
-    const row = await env.DB.prepare("SELECT COUNT(*) AS total FROM users").first();
-    if (row.total !== 0) return error("Initial setup has already been completed.", 409);
     const body = await readBody(request);
     const name = safeText(body.name, 100), email = safeText(body.email, 190).toLowerCase();
     if (!name || !validEmail(email) || typeof body.password !== "string" || body.password.length < 12) {
       return error("Enter a name, valid email, and a password of at least 12 characters.");
     }
     const p = await passwordHash(body.password);
-    await env.DB.prepare("INSERT INTO users(name,email,password_hash,role) VALUES(?,?,?,'admin')")
-      .bind(name, email, p.salt + ":" + p.hash).run();
+    // A single conditional INSERT makes the first-admin check and creation one
+    // database operation, preventing concurrent setup requests from creating
+    // multiple initial administrators.
+    const result = await env.DB.prepare(
+      "INSERT INTO users(name,email,password_hash,role) SELECT ?,?,?,'admin' WHERE NOT EXISTS (SELECT 1 FROM users)"
+    ).bind(name, email, p.salt + ":" + p.hash).run();
+    if (!result.meta || result.meta.changes !== 1) {
+      return error("Initial setup has already been completed.", 409);
+    }
     return json({ message: "Administrator created. You can now sign in." }, 201);
   }
   if (path === "login" && method === "POST") {
