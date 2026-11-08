@@ -1,0 +1,5 @@
+Options -Indexes
+DirectoryIndex index.php
+<FilesMatch "^(\.env|\.git|README\.md|composer\.(json|lock)|package(-lock)?\.json)$">
+    Require all denied
+</FilesMatch>
