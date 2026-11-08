@@ -16,8 +16,8 @@ A PHP 8+ and MySQL application for tracking generators, customers, maintenance j
 - Apache/Nginx (or UwAmp/XAMPP for local development)
 
 ## Local installation
-1. Create a MySQL database named `gaston_power`.
-2. Import `database/schema.sql` using phpMyAdmin or the MySQL client.
+1. Create a MySQL database in your hosting control panel (the provider may assign a prefixed database name).
+2. Open that database in phpMyAdmin and import `database/schema.sql`.
 3. Copy `config/database.example.php` to `config/database.php` and set your database host, name, username and password. Never commit real credentials.
 4. Set a long random `APP_KEY` in `config/database.php`.
 5. Point your web server document root to this project folder. For production, ideally point it to `public/`.
