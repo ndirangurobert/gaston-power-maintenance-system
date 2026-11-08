@@ -1,6 +1,4 @@
-CREATE DATABASE IF NOT EXISTS gaston_power CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE gaston_power;
-
+-- Select the database created in your hosting control panel before importing this file.
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   full_name VARCHAR(120) NOT NULL,
