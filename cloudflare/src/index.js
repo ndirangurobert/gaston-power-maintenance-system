@@ -339,7 +339,7 @@ if(tab==="staff"){const d=await api("staff");c.innerHTML='<div class="panel"><h2
 const d=await api(tab);const cfg=defs[tab];c.innerHTML=(me.role!=="viewer"?formHtml(tab):"")+'<div class="panel"><h2>Registered '+cfg.title.toLowerCase()+'</h2>'+table(d.items,cfg.cols)+'</div>';
 if($("#recordForm"))$("#recordForm").onsubmit=async e=>{e.preventDefault();const b=Object.fromEntries(new FormData(e.target));try{const d=await api(tab,"POST",b);msg($("#formMsg"),d.message);e.target.reset();load(tab)}catch(x){msg($("#formMsg"),x.message,true)}};
 }catch(e){c.innerHTML='<div class="notice error">'+esc(e.message)+'</div>'}}
-function table(rows,cols){if(!rows?.length)return '<p class="muted">No records found yet.</p>';return '<div class="tablewrap"><table><thead><tr>'+cols.map(k=>'<th>'+k.replaceAll("_"," ")+'</th>').join("")+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+cols.map(k=>'<td>'+esc(r[k]??"—")+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>'}
+function table(rows,cols){if(!rows?.length)return '<p class="muted">No records found yet.</p>';return '<div class="tablewrap"><table><thead><tr>'+cols.map(k=>'<th>'+k.replace(/_/g," ")+'</th>').join("")+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+cols.map(k=>'<td>'+esc(r[k]??"—")+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>'}
 init();
 </script></body></html>`;
 }
