@@ -7,6 +7,7 @@ A PHP 8+ and MySQL application for tracking generators, customers, maintenance j
 - Admin, technician and viewer roles
 - Generator asset register and customer records
 - Maintenance work orders, technician assignment and service notes
+- Customer help requests, technician assignment, status tracking and staff responses
 - Spare-parts register with low-stock indicators
 - Dashboard statistics and audit logging
 - Prepared SQL statements, CSRF protection, output escaping and login throttling
@@ -19,7 +20,7 @@ A PHP 8+ and MySQL application for tracking generators, customers, maintenance j
 ## Deploying to shared PHP/MySQL hosting
 1. Create a MySQL database using the hosting control panel. Copy its exact database name, hostname, username and password.
 2. Open phpMyAdmin for that database and import `database/schema.sql`. The SQL file imports into the database you selected; it does not try to create a database.
-3. Copy `config/database.example.php` to `config/database.php` and set the exact database credentials supplied by your host.
+3. Copy `config/database.example.php` to `config/database.php` and set the exact database credentials supplied by your host. Keep `config/database.php` private and out of Git.
 4. Set a unique random `APP_KEY` of at least 32 characters. Do not commit real credentials to GitHub.
 5. Upload the project files and folders into the website document root (often `htdocs` or `public_html`). Preserve folder structure.
 6. Visit your domain to reach the sign-in page, then open `setup.php` once to create the first administrator.
@@ -38,4 +39,7 @@ InfinityFree database names, usernames and hosts are generated in the control pa
 - This is a development foundation, not a certified production system. Complete staff management, operational testing and an independent security review before using it for company-critical records.
 
 ## Project status
-Customer records, generator register, maintenance work orders, technician assignment, spare-parts register and password change are included. Staff account management, stock movement controls, reports and further production hardening remain planned.
+Customer records, generator register, maintenance work orders, technician assignment, customer help request tracking, spare-parts register and password change are included. Admins can record customer issues, assign technicians and update requests. Technicians can view and update only requests assigned to their accounts.
+
+## Updating an existing database
+After pulling the latest code, open phpMyAdmin, select the existing Gaston database, and import the updated `database/schema.sql`. The new customer-help table is created with `CREATE TABLE IF NOT EXISTS`; existing customer, generator, user and maintenance records are not dropped. Back up the database before importing. Staff account management, stock movement controls, reports and further production hardening remain planned.
