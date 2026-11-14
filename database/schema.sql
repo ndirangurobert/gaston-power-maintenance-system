@@ -85,3 +85,24 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   CONSTRAINT fk_audit_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
   INDEX idx_audit_created (created_at)
 ) ENGINE=InnoDB;
+
+
+-- Customer help requests raised by staff on behalf of customers.
+CREATE TABLE IF NOT EXISTS customer_help_requests (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  customer_id BIGINT UNSIGNED NOT NULL,
+  subject VARCHAR(180) NOT NULL,
+  message TEXT NOT NULL,
+  status ENUM('pending','in_progress','resolved') NOT NULL DEFAULT 'pending',
+  assigned_to BIGINT UNSIGNED NULL,
+  staff_response TEXT NULL,
+  created_by BIGINT UNSIGNED NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_help_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_help_technician FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_help_creator FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_help_status (status),
+  INDEX idx_help_assigned (assigned_to),
+  INDEX idx_help_created (created_at)
+) ENGINE=InnoDB;
